@@ -112,7 +112,7 @@ def get_base_crop_area_cv2(img, standard):
     return get_crop_area_light(img, 95, l, r, t, b, (r - l) // 100, (b - t) // 100)
 
 
-def getSobel(channel):
+def get_sobel(channel):
     sobelx = cv2.Sobel(channel, cv2.CV_16S, 1, 0, borderType=cv2.BORDER_REPLICATE)
     sobely = cv2.Sobel(channel, cv2.CV_16S, 0, 1, borderType=cv2.BORDER_REPLICATE)
     sobel = np.hypot(sobelx, sobely)
@@ -120,20 +120,20 @@ def getSobel(channel):
     return sobel
 
 
-def findSignificantContours(img, sobel_8u):
+def find_significant_contours(img, sobel_8u):
     contours, heirarchy = cv2.findContours(sobel_8u, cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
 
     level1 = []
-    for i, tupl in enumerate(heirarchy[0]):
-        if tupl[3] == -1:
-            tupl = np.insert(tupl, 0, [i])
-            level1.append(tupl)
+    for i, tpl in enumerate(heirarchy[0]):
+        if tpl[3] == -1:
+            tpl = np.insert(tpl, 0, [i])
+            level1.append(tpl)
 
     significant = []
-    tooSmall = sobel_8u.size * 5 / 100
-    for tupl in level1:
+    too_small = sobel_8u.size * 5 / 100
+    for tpl in level1:
 
-        contour = contours[tupl[0]]
+        contour = contours[tpl[0]]
 
         # epsilon = 0.10 * cv2.arcLength(contour, True)
         # approx = cv2.approxPolyDP(contour, 3, True)
@@ -151,7 +151,7 @@ def findSignificantContours(img, sobel_8u):
         # contour = approx
 
         area = cv2.contourArea(contour)
-        if area > tooSmall:
+        if area > too_small:
             cv2.drawContours(img, [contour], 0, (255, 255, 255), 2, cv2.LINE_AA, maxLevel=1)
             significant.append([contour, area])
 
@@ -170,7 +170,7 @@ def segment(path_main, path_mask, name, need_to_rotate=False):
 
     blurred = cv2.GaussianBlur(img_mask, (5, 5), 0)  # Remove noise
 
-    sobel = np.max(np.array([getSobel(blurred[:, :, 0]), getSobel(blurred[:, :, 1]), getSobel(blurred[:, :, 2])]),
+    sobel = np.max(np.array([get_sobel(blurred[:, :, 0]), get_sobel(blurred[:, :, 1]), get_sobel(blurred[:, :, 2])]),
                    axis=0)
 
     mean = np.mean(sobel)
@@ -180,7 +180,7 @@ def segment(path_main, path_mask, name, need_to_rotate=False):
 
     sobel_8u = np.asarray(sobel, np.uint8)
 
-    significant = findSignificantContours(img_main, sobel_8u)
+    significant = find_significant_contours(img_main, sobel_8u)
 
     mask = sobel.copy()
     mask[mask > 0] = 0
@@ -212,8 +212,6 @@ def execute(folder):
         mask, main = pair
         p = multiprocessing.Process(target=crop_image, args=(start_time, mask, main))
         p.start()
-        # crop_image(start_time, mask, main)
-    # print('cropped all images in: ' + str(time.time() - start_time))
 
 
 execute(first)
