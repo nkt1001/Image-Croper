@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 import time
 import multiprocessing
-from scipy.signal import savgol_filter
+# from scipy.signal import savgol_filter
 
 MAIN_KEY = 'main'
 MASK_KEY = 'mask'
