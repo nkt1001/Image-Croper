@@ -2,13 +2,13 @@ import os
 import numpy as np
 import cv2
 import time
-import multiprocessing
+# import multiprocessing
 # from scipy.signal import savgol_filter
 
 MAIN_KEY = 'main'
 MASK_KEY = 'mask'
 LIGHT_MEAN_STANDARD = 470
-first = 'image/1'
+first = 'image/debug'
 output = 'image/result'
 
 
@@ -51,7 +51,6 @@ def get_crop_area_dark(img, standard, x_start, x_end, y_start, y_end,  width_ste
             l_dark = a
         if r_dark == -1 and is_line_light(img[y_start:y_end, x_end + x_start - a - 1], standard):
             r_dark = x_end - a + x_start
-            # r_dark = next_right if next_right < x_end else x_end
 
     for b in range(y_start, y_end, height_step):
         if t_dark != -1 and b_dark != -1:
@@ -61,7 +60,6 @@ def get_crop_area_dark(img, standard, x_start, x_end, y_start, y_end,  width_ste
             t_dark = b
         if b_dark == -1 and is_line_light(img[y_end - b + y_start - 1, l_dark:r_dark], standard):
             b_dark = y_end - b + y_start
-            # b_dark = next_b if next_b < y_end else y_end
 
     if l_dark == -1 or t_dark == -1 or r_dark == -1 or b_dark == -1:
         return y_start, y_end, x_start, x_end
@@ -96,7 +94,7 @@ def get_crop_area_light(img, standard, x_start, x_end, y_start, y_end,  width_st
             break
 
         if t_dark == -1 and not is_line_light(img[b, l_dark:r_dark], standard):
-            t_dark = b - height_step if b - 2 * height_step > y_start else y_start
+            t_dark = b - 2 * height_step if b - 2 * height_step > y_start else y_start
         if b_dark == -1 and not is_line_light(img[y_end - b + y_start - 1, l_dark:r_dark], standard):
             next_b = y_end - b + y_start + 2 * height_step
             b_dark = next_b if next_b < y_end else y_end
@@ -159,10 +157,15 @@ def find_significant_contours(img, sobel_8u):
     return [x[0] for x in significant]
 
 
-def segment(path_main, path_mask, name, need_to_rotate=False):
+def segment(path_main, path_mask, name):
 
     img_mask = cv2.imread(path_mask)
     img_main = cv2.imread(path_main)
+
+    image_width = len(img_mask[0, :])
+    image_height = len(img_mask[:, 0])
+
+    need_to_rotate = image_width > image_height
 
     t, b, l, r = get_base_crop_area_cv2(img_mask, 50)
     img_mask = img_mask[t:b, l:r]
@@ -190,14 +193,14 @@ def segment(path_main, path_mask, name, need_to_rotate=False):
     img_main[mask] = 255
 
     if need_to_rotate:
-        rotate_image(img_main)
+        img_main = rotate_image(img_main)
 
     fname = name.split('/')[-1]
     cv2.imwrite(output + '/' + fname, img_main)
 
 
 def rotate_image(image):
-    cv2.rotate(image, cv2.ROTATE_90_COUNTERCLOCKWISE, image)
+    return cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE, image)
 
 
 def crop_image(start_time, mask, main):
@@ -210,8 +213,9 @@ def execute(folder):
     start_time = time.time()
     for pair in connect_mask_and_main(folder):
         mask, main = pair
-        p = multiprocessing.Process(target=crop_image, args=(start_time, mask, main))
-        p.start()
+        crop_image(start_time, mask, main)
+        # p = multiprocessing.Process(target=crop_image, args=(start_time, mask, main))
+        # p.start()
 
 
 execute(first)
